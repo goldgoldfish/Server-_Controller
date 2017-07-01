@@ -13,6 +13,7 @@ const int power_button_pin = 10; //the server's power button
 //declaring global variables
 volatile boolean power_state = 0;
 const byte func[3] = {89, 90, 91};
+byte force_power_off = 0; //var for the controller to not try to turn on the server
 
 //declaring void functions
 void power_state_change(void);
@@ -39,8 +40,9 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(power_on_pin), power_state_change, CHANGE);
 } //end setup
 
-void loop() {
-  int power_LED_statues = 0; //var for the current statues of the power led
+void loop() { 
+  byte timeout = 0; //var for if the max startup attempts have been reached
+  byte power_LED_statues = 0; //var for the current statues of the power led
   byte cmmd = 0; //stores the value of any requested command
   if (digitalRead(power_on_pin)) {
     power_state = 1; //if the server power is on power state is true
@@ -54,6 +56,7 @@ void loop() {
       digitalWrite(power_state_pin, power_state); //upadate the power statues led
       power_LED_statues = power_state; //update power led statues
       display_power_state(); //Update the LCD with the server power statues
+      if(power_LED_statues) timeout = 0; //reset timeout flag
     } //end if
     cmmd = get_data(); //gets the most recent cmmd
     if (cmmd){
@@ -66,12 +69,34 @@ void loop() {
       } //end else
     } //end if
     //Serialdump(); //dump the rest of the serial buffer
-  } //end while
+    if (!power_LED_statues && !force_power_off && !timeout){ //power on server if needed
+      byte startup_attempts = 0; //number of attempts to start the server
+      clear_LCD();
+      Serial.println("Attempting Startup");
+      attempt_startup_again:
+      if (start_server());
+      else{
+        startup_attempts++;
+        if(startup_attempts >= 5) {
+          clear_LCD();
+          Serial.println("Too Many Attempts");
+          timeout = 1;
+        }
+        else goto attempt_startup_again;
+      } //end else
+    } //end if
+  } //end whil
 } //end loop
 
 void power_state_change(void){
-  if (digitalRead(power_on_pin)) power_state = 1; //if the server power is on power state is true
-  else power_state = 0; //if the server power is off power state is false
+  if (digitalRead(power_on_pin)) {
+    power_state = 1; //if the server power is on power state is true
+    force_power_off = 0; //controller back to normal state
+    Serial.println("Force off: 0");
+  } //end if
+  else {
+    power_state = 0; //if the server power is off power state is false
+  } //end else
 } //end power_state_change
 
 byte get_data(){
@@ -103,6 +128,8 @@ byte do_cmmd(byte cmmd){
     return 1;
   } //end else if 
   else if (cmmd == '3'){ //soft power off the server
+    force_power_off = 1; //tell controller to not turn on server
+    Serial.println("Force off: 1");
     if (power_state){ //check power statues of server
       if (shutdown_server()){//attempt to shutdown server
       } //end if
@@ -122,7 +149,8 @@ byte do_cmmd(byte cmmd){
     return 1;
   } //end else if
   else if (cmmd == '9'){ //hard power off the server
-    
+    force_power_off = 1; //tell controller to not turn on the server
+    Serial.println("Force off: 1");
   } //end else if
   else return 0;
 } //end do_cmmd
@@ -198,12 +226,13 @@ boolean shutdown_server(void){
 boolean restart_server(void){
   if (!power_state){
     clear_LCD();
-    Serial.println("Server is Already Off");
+    Serial.println("Server Already Off");
   } //end if
   else{
     if (shutdown_server()){
       clear_LCD();
       Serial.println("Server is Down");
+      Serial.println("Restarting");
       if (start_server()){
         clear_LCD();
         Serial.println("Restart Complete");
