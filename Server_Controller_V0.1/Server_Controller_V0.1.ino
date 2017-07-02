@@ -12,7 +12,6 @@ const int power_button_pin = 10; //the server's power button
 
 //declaring global variables
 volatile boolean power_state = 0;
-const byte func[3] = {89, 90, 91};
 byte force_power_off = 0; //var for the controller to not try to turn on the server
 
 //declaring void functions
@@ -70,7 +69,6 @@ void loop() {
         Serial.println("Error in Commnd!");
       } //end else
     } //end if
-    //Serialdump(); //dump the rest of the serial buffer
     if (!power_LED_statues && !force_power_off && !timeout && !power_state){ //power on server if needed
       byte startup_attempts = 0; //number of attempts to start the server
       clear_LCD();
@@ -87,7 +85,7 @@ void loop() {
         else goto attempt_startup_again;
       } //end else
     } //end if
-  } //end whil
+  } //end whilw
 } //end loop
 
 void power_state_change(void){
@@ -110,7 +108,7 @@ byte get_data(){
 byte do_cmmd(byte cmmd){
   if (cmmd == '1'){ //display the power state of the server
     display_power_state();
-    return 1;
+    goto good_cmmd;
   } //end if
   else if (cmmd == '2'){ //turn on the server
     if (!power_state){ //check power statues of server
@@ -127,7 +125,7 @@ byte do_cmmd(byte cmmd){
       clear_LCD();
       Serial.println("Server Already Started");
     } //end else
-    return 1;
+    goto good_cmmd;
   } //end else if 
   else if (cmmd == '3'){ //soft power off the server
     force_power_off = 1; //tell controller to not turn on server
@@ -144,19 +142,19 @@ byte do_cmmd(byte cmmd){
       clear_LCD();
       Serial.println("Server Already Off");
     } //end else
-    return 1;
+    goto good_cmmd;
   } //end else if 
   else if (cmmd == '4'){ //restart the server
     restart_server();
-    return 1;
+    goto good_cmmd;
   } //end else if
   else if (cmmd == '7'){ //disable controller
     disable_controller();
-    return 1;
+    goto good_cmmd;
   } //end else if
   else if (cmmd == '8'){ //enable controller
     enable_controller();
-    return 1;
+    goto good_cmmd;
   } //end else if
   else if (cmmd == '9'){ //hard power off the server
     force_power_off = 1; //tell controller to not turn on the server
@@ -173,9 +171,15 @@ byte do_cmmd(byte cmmd){
       clear_LCD();
       Serial.println("Server Already Off");
     } //end else
-    return 1;
-  } //end else if 
-  else return 0;
+    goto good_cmmd;
+  } //end else if
+  else {
+    Serialdump(); //dump the rest of the serial buffer
+    return 0;
+  } //end else
+  good_cmmd:
+  Serialdump(); //dump the rest of the serial buffer
+  return 1;
 } //end do_cmmd
 
 void clear_LCD(void){
@@ -183,25 +187,6 @@ void clear_LCD(void){
   Serial.write(0x51);
   delay(25); //minimum delay for the LCD to consistantly finish clearing
 } //end clear_LCD
-
-//byte check_cmmd(byte cmmd){
-//  byte i = 0;
-//  while(func[i]){ //while the array still can be checked
-//    if(cmmd == func[i]){ //if a value matches one in the array
-//      return 1; //return 1 if one found
-//    } //end if
-//    i++;
-//  }// end while
-//  return 0; //return 0 if none found
-//} //end check_cmmd
-
-
-void Serialdump(void){ //This doesn't work right now
-  byte temp_dump = 0;
-  while(Serial.available()){
-    temp_dump = Serial.read();
-  } //end while
-} //end Serialdump
 
 void display_power_state(void){
   if (power_state){ //check if server is on
@@ -302,3 +287,9 @@ boolean force_shutdown(void){
   digitalWrite(power_button_pin, LOW); //unpress simulated button
 } //end force_shutdown
 
+void Serialdump(void){
+  byte temp_dump = 0;
+  while(Serial.available()){
+    temp_dump = Serial.read();
+  } //end while
+} //end Serialdump
