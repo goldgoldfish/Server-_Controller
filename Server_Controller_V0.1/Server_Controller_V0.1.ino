@@ -71,7 +71,7 @@ void loop() {
       } //end else
     } //end if
     //Serialdump(); //dump the rest of the serial buffer
-    if (!power_LED_statues && !force_power_off && !timeout){ //power on server if needed
+    if (!power_LED_statues && !force_power_off && !timeout && !power_state){ //power on server if needed
       byte startup_attempts = 0; //number of attempts to start the server
       clear_LCD();
       Serial.println("Attempting Startup");
@@ -238,12 +238,14 @@ boolean shutdown_server(void){
   int iter = 0;
   clear_LCD();
   Serial.println("Please Wait");
-  while (power_state){ //wait for server to shutdown
-    if (iter == 5000) return 0;
-    delay(10);
-    iter++;
+  unsigned long shutdown_time_start = millis(); //get the time that shutdown starts
+  unsigned long shutdown_time_curr = shutdown_time_start;
+  const unsigned long time_delay_soft = 60000; //the amount of time that shutdown will be attempted (ms)
+  while (power_state && shutdown_time_curr < (shutdown_time_start + time_delay_soft)){ //wait for server to shutdown
+    shutdown_time_curr = millis();
   } //end while
-  return 1;
+  if (!power_state) return 1;
+  else return 0;
 } //end shutdown_server
 
 boolean restart_server(void){
@@ -290,12 +292,12 @@ boolean force_shutdown(void){
   digitalWrite(power_button_pin, HIGH); //simulate button push
   unsigned long shutdown_time_start = millis(); //get the time that shutdown starts
   unsigned long shutdown_time_curr = shutdown_time_start;
-  const unsigned long time_delay = 60000; //the amount of time that shutdown will be attempted (ms)
+  const unsigned long time_delay_hard = 60000; //the amount of time that shutdown will be attempted (ms)
   if (shutdown_time_start >= (4294907295)){
-    while (power_state && shutdown_time_curr + 60001 < shutdown_time_start + 120001) shutdown_time_curr = millis(); //wait for server shutdown
+    while (power_state && (shutdown_time_curr + 60001) < (shutdown_time_start + (time_delay_hard*2+1))) shutdown_time_curr = millis(); //wait for server shutdown
   } //end if
   else {
-    while (power_state && shutdown_time_curr < shutdown_time_start + 60000) shutdown_time_curr = millis(); //wait for server shutdown
+    while (power_state && shutdown_time_curr < (shutdown_time_start + time_delay_hard)) shutdown_time_curr = millis(); //wait for server shutdown
   } //end else
   digitalWrite(power_button_pin, LOW); //unpress simulated button
 } //end force_shutdown
