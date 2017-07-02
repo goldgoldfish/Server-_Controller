@@ -20,6 +20,8 @@ void power_state_change(void);
 void clear_LCD(void);
 void Serialdump(void);
 void display_power_state(void);
+void disable_controller(void);
+void enable_controller(void);
 
 //declaring returning functions
 byte get_data(void);
@@ -92,7 +94,7 @@ void power_state_change(void){
   if (digitalRead(power_on_pin)) {
     power_state = 1; //if the server power is on power state is true
     force_power_off = 0; //controller back to normal state
-    Serial.println("Force off: 0");
+    //Serial.println("Force off: 0");
   } //end if
   else {
     power_state = 0; //if the server power is off power state is false
@@ -129,7 +131,7 @@ byte do_cmmd(byte cmmd){
   } //end else if 
   else if (cmmd == '3'){ //soft power off the server
     force_power_off = 1; //tell controller to not turn on server
-    Serial.println("Force off: 1");
+    //Serial.println("Force off: 1");
     if (power_state){ //check power statues of server
       if (shutdown_server()){//attempt to shutdown server
       } //end if
@@ -148,10 +150,31 @@ byte do_cmmd(byte cmmd){
     restart_server();
     return 1;
   } //end else if
+  else if (cmmd == '7'){ //disable controller
+    disable_controller();
+    return 1;
+  } //end else if
+  else if (cmmd == '8'){ //enable controller
+    enable_controller();
+    return 1;
+  } //end else if
   else if (cmmd == '9'){ //hard power off the server
     force_power_off = 1; //tell controller to not turn on the server
-    Serial.println("Force off: 1");
-  } //end else if
+    //Serial.println("Force off: 1");
+    if (power_state){ //check power statues of server
+      if (shutdown_server()){//attempt to shutdown server
+      } //end if
+      else { //could not turn off server
+        clear_LCD();
+        Serial.println("Server Not Off");
+      } //end else
+    } //end if
+    else{
+      clear_LCD();
+      Serial.println("Server Already Off");
+    } //end else
+    return 1;
+  } //end else if 
   else return 0;
 } //end do_cmmd
 
@@ -181,11 +204,11 @@ void Serialdump(void){ //This doesn't work right now
 } //end Serialdump
 
 void display_power_state(void){
-  if (power_state){
+  if (power_state){ //check if server is on
     clear_LCD();
     Serial.println("Server is Up");
   } //end if
-  else if (!power_state){
+  else if (!power_state){ //check if server is off
     clear_LCD();
     Serial.println("Server is Down");
   } //end else if
@@ -229,11 +252,11 @@ boolean restart_server(void){
     Serial.println("Server Already Off");
   } //end if
   else{
-    if (shutdown_server()){
+    if (shutdown_server()){ //check if shutdown was successful
       clear_LCD();
       Serial.println("Server is Down");
       Serial.println("Restarting");
-      if (start_server()){
+      if (start_server()){ //check if startup was successful
         clear_LCD();
         Serial.println("Restart Complete");
         Serial.println("Server is Up");
@@ -249,3 +272,31 @@ boolean restart_server(void){
     } //end else
   } //end else
 } //end restart_server
+
+void disable_controller(){ //disables all commands and functions execpt enable
+  clear_LCD();
+  Serial.println("Controller Disabled");
+  while(get_data() != '8'); //waits for enable command
+  clear_LCD();
+  Serial.println("Server Enabled");
+} //end disable controller
+
+void enable_controller(){ //this is command is really just a place holder
+  clear_LCD();
+  Serial.println("Controller Already Enabled");
+} //end enable controller
+
+boolean force_shutdown(void){
+  digitalWrite(power_button_pin, HIGH); //simulate button push
+  unsigned long shutdown_time_start = millis(); //get the time that shutdown starts
+  unsigned long shutdown_time_curr = shutdown_time_start;
+  const unsigned long time_delay = 60000; //the amount of time that shutdown will be attempted (ms)
+  if (shutdown_time_start >= (4294907295)){
+    while (power_state && shutdown_time_curr + 60001 < shutdown_time_start + 120001) shutdown_time_curr = millis(); //wait for server shutdown
+  } //end if
+  else {
+    while (power_state && shutdown_time_curr < shutdown_time_start + 60000) shutdown_time_curr = millis(); //wait for server shutdown
+  } //end else
+  digitalWrite(power_button_pin, LOW); //unpress simulated button
+} //end force_shutdown
+
