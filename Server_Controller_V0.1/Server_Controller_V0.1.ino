@@ -29,8 +29,6 @@ boolean start_server(void);
 boolean shutdown_server(void);
 boolean restart_server(void);
 
-//byte check_cmmd(byte cmmd); Don't need this at the moment
-
 void setup() {
   pinMode(power_on_pin, INPUT);
   pinMode(power_state_pin, OUTPUT);
