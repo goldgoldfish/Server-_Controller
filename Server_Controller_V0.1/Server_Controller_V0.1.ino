@@ -5,6 +5,9 @@
  * Description: Not yet!
  */
 
+#include <SPI.h>
+#include <Ethernet.h>
+
 //declaring pin variables
 const int power_on_pin = 2; //Connects to the power on LED of the server
 const int power_state_pin = 4; //LED displaying the server's power statues
@@ -28,6 +31,14 @@ byte do_cmmd(byte cmmd);
 boolean start_server(void);
 boolean shutdown_server(void);
 boolean restart_server(void);
+
+//setup ethernet properties
+byte mac[] = { 0x90, 0xA2, 0xDA, 0x11, 0x1F, 0x1A };
+IPAddress ip(192, 168, 0, 50);
+IPAddress gateway(192, 168, 0, 1);
+IPAddress subnet(255, 255, 255, 0);
+
+EthernetServer server(80);
 
 void setup() {
   pinMode(power_on_pin, INPUT);
