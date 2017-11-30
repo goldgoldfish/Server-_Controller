@@ -46,10 +46,12 @@ void setup() {
   pinMode(power_button_pin, OUTPUT);
 
   Serial.begin(9600);
+  /*
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
   Serial.println("Serial connection open");
+  */
   
   attachInterrupt(digitalPinToInterrupt(power_on_pin), power_state_change, CHANGE);
 
