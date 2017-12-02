@@ -46,12 +46,12 @@ void setup() {
   pinMode(power_button_pin, OUTPUT);
 
   Serial.begin(9600);
-  /*
+  
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
   Serial.println("Serial connection open");
-  */
+  
   
   attachInterrupt(digitalPinToInterrupt(power_on_pin), power_state_change, CHANGE);
 
@@ -322,49 +322,43 @@ void Serialdump(void){
 } //end Serialdump
 
 void ether(void){
-  // listen for incoming clients
-  EthernetClient client = server.available();
-  if (client) {
-    Serial.println("new client");
-    // an http request ends with a blank line
-    boolean currentLineIsBlank = true;
-    while (client.connected()) {
-      if (client.available()) {
-        char c = client.read();
-        Serial.write(c);
-        // if you've gotten to the end of the line (received a newline
-        // character) and the line is blank, the http request has ended,
-        // so you can send a reply
-        if (c == '\n' && currentLineIsBlank) {
-          // send a standard http response header
-          client.println("HTTP/1.1 200 OK");
-          client.println("Content-Type: text/html");
-          client.println("Connection: close");  // the connection will be closed after completion of the response
-          //client.println("Refresh: 5");  // refresh the page automatically every 5 sec
-          client.println();
-          client.println("<!DOCTYPE HTML>");
-          client.println("<html>");
-          client.print("The server statues is ");
-          if(power_state == 1) client.print("ON");
-          else if(power_state == 0) client.print("OFF");
-          else client.print("ERROR");
-          client.println("<br />");
-          client.println("</html>");
-          break;
-        }
-        if (c == '\n') {
-          // you're starting a new line
-          currentLineIsBlank = true;
-        } else if (c != '\r') {
-          // you've gotten a character on the current line
-          currentLineIsBlank = false;
-        }
+  EthernetClient client = server.available();      // assign any newly connected Web Browsers to the "client" variable.
+  
+  if(client.connected()){
+    Serial.println("Client Connected");
+    
+    while(client.available()){
+      //Serial.write(client.read());               // Uncomment if you want to write the request from the Browser (CLIENT) to the SERIAL MONITOR (and comment out the next line)
+      client.read();                               // This line will clear the communication buffer between the client and the server.
+    }
+    
+    //Send the Server response header back to the browser.
+    client.println("HTTP/1.1 200 OK");           // This tells the browser that the request to provide data was accepted
+    client.println("Access-Control-Allow-Origin: *");  //Tells the browser it has accepted its request for data from a different domain (origin).
+    client.println("Content-Type: application/json;charset=utf-8");  //Lets the browser know that the data will be in a JSON format
+    client.println("Server: Arduino");           // The data is coming from an Arduino Web Server (this line can be omitted)
+    client.println("Connection: close");         // Will close the connection at the end of data transmission.
+    client.println();                            // You need to include this blank line - it tells the browser that it has reached the end of the Server reponse header.
+    
+    //Transmit the Analog Readings to the Web Browser in JSON format
+    //Example Transmission: [{"key":0, "value":300},{"key":1, "value":320},{"key":2, "value":143},{"key":3, "value":24},{"key":4, "value":760},{"key":5, "value":470}]
+    client.print("[");                           // This is tha starting bracket of the JSON data
+    for(int i=0; i<6; i++){                      // Transmit analog readings from Analog Pin 0 to Analog Pin 5
+      client.print("{\"key\": ");
+      client.print(i);                           // The key for Analog pin 0 (A0) is equal to 0   eg.  "key":0
+      client.print(", \"value\": ");
+      client.print(analogRead(i));               // The value is equal to the Analog reading from that pin.  eg. "value":300
+      if(i==5){
+        client.print("}");                       // The last value will end with a bracket (without a comma)
+      } else {
+        client.print("},");                      // All other values will have a comma after the bracket.
       }
     }
-    // give the web browser time to receive the data
-    delay(1);
-    // close the connection:
-    client.stop();
-    Serial.println("client disconnected");
-  }
-}
+    client.println("]");                         // This is the final bracket of the JSON data
+    client.stop();                               // This method terminates the connection to the client
+    Serial.println("Client has closed");         // Print the message to the Serial monitor to indicate that the client connection has closed.
+  } //end if
+} //end ether
+
+
+
