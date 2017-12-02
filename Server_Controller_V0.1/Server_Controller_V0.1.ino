@@ -16,6 +16,7 @@ const int power_button_pin = 10; //the server's power button
 //declaring global variables
 volatile boolean power_state = 0;
 byte force_power_off = 0; //var for the controller to not try to turn on the server
+int connected_clients = 0; //the number of clients connected to the server
 
 //declaring void functions
 void power_state_change(void);
